@@ -22,4 +22,13 @@ void CPawn::makeMoves( ) {
 
 	CMove EnPassantKS{ eMovePattern::EnPassantKS, eMoveNumber::Once, true };
 	m_Moves.push_back(EnPassantKS);
-};
+}
+
+bool CPawn::canPromote()
+{
+	if (m_Color == eColor::White && m_CurrentCoord.second == eNumbers::Eight) return true;
+	else if (m_Color == eColor::Black && m_CurrentCoord.second == eNumbers::One) return true;
+	else return false;
+	return false;
+}
+;

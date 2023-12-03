@@ -35,13 +35,15 @@ public:
 		m_CanTakeEnPassantKS = canEnpassant;
 	}
 
-	bool getCanBeTakenEnPassant() {
+	bool getCanBeTakenEnPassant() { 
 		return m_CanBeTakenEnPassant;
 	}
 
-	void setCanBeTakenEnPassant(bool canBeTakenEnpassant) {
+	void setCanBeTakenEnPassant(bool  canBeTakenEnpassant) {
 		m_CanBeTakenEnPassant = canBeTakenEnpassant;
 	}
+
+	bool canPromote();
 };
 
 

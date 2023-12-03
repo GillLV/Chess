@@ -85,6 +85,7 @@ void CBoard::UpdateSquareText(int stringSquarePos, std::string Symbol)
 
 }
 
+
 void CBoard::FindLegalMoves(std::shared_ptr<CPiece> piece, bool &isKingInCheck)
 {
 	Coord currentCoord = piece->getCurrentCoord();
@@ -97,33 +98,33 @@ void CBoard::FindLegalMoves(std::shared_ptr<CPiece> piece, bool &isKingInCheck)
 		case eMovePattern::Forward:
 			if (move.getMoveNumber() == eMoveNumber::Once)
 			{
-				getForwardOnceCoord(coordVec, currentCoord, move.getCanCapture(), piece->getColor(), isKingInCheck);
+				getForwardOnceCoord(coordVec, piece, move.getCanCapture(), isKingInCheck);
 			}
 			else if (move.getMoveNumber() == eMoveNumber::Twice)
 			{
 				//Can only use this move if piece has not already been moved
 				if (piece->getHasMoved() == true) break;
-				getForwardTwiceCoord(coordVec, currentCoord, move.getCanCapture(), piece->getColor(), isKingInCheck);
+				getForwardTwiceCoord(coordVec, piece, move.getCanCapture(), isKingInCheck);
 			}
 			break;
 		case eMovePattern::Adjacent:
 			if (move.getMoveNumber() == eMoveNumber::Once)
 			{
-				getAdjacentOnceCoord(coordVec, currentCoord, move.getCanCapture(), piece->getColor(), isKingInCheck);
+				getAdjacentOnceCoord(coordVec,  piece, move.getCanCapture(), isKingInCheck);
 			}
 			else if (move.getMoveNumber() == eMoveNumber::Continuous)
 			{
-				getAjacentContinuousCoord(coordVec, currentCoord, move.getCanCapture(), piece->getColor(), isKingInCheck);
+				getAjacentContinuousCoord(coordVec, piece, move.getCanCapture(), isKingInCheck);
 			}
 			break;
 		case eMovePattern::Diagonal:
 			if (move.getMoveNumber() == eMoveNumber::Once)
 			{
-				getDiagonalOnceCoord(coordVec, currentCoord, move.getCanCapture(), piece->getColor(), isKingInCheck);
+				getDiagonalOnceCoord(coordVec, piece, move.getCanCapture(), isKingInCheck);
 			}
 			else if (move.getMoveNumber() == eMoveNumber::Continuous)
 			{
-				getDiagonalContinuousCoord(coordVec, currentCoord, move.getCanCapture(), piece->getColor(), isKingInCheck);
+				getDiagonalContinuousCoord(coordVec, piece, move.getCanCapture(), isKingInCheck);
 			}
 			break;
 		case eMovePattern::EnPassantQS:
@@ -133,7 +134,7 @@ void CBoard::FindLegalMoves(std::shared_ptr<CPiece> piece, bool &isKingInCheck)
 			canEnPassantKS(currentCoord);
 			break;
 		case eMovePattern::LShape:
-			getLShapeCoord(coordVec, currentCoord, move.getCanCapture(), piece->getColor(), isKingInCheck);
+			getLShapeCoord(coordVec, piece, move.getCanCapture(), isKingInCheck);
 			break;
 		case eMovePattern::CastleQS:
 			canCastle(currentCoord);
@@ -156,14 +157,20 @@ bool CBoard::hasRookMoved(eLetters letter, eNumbers number)
 	
 }
 
-bool CBoard::isSpaceValid(CValidSquare ValidSquare,bool& isKingInCheck)
+bool CBoard::isSpaceValid(Coord moveCoord, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	ValidSquare.isSquareInBounds();
-	{
+	if (moveCoord.first >= eLetters::A && moveCoord.first <= eLetters::H &&
+		moveCoord.second >= eNumbers::One && moveCoord.second <= eNumbers::Eight)
+	{     
 
-		bool isPawn = ValidSquare.isPawn();
-		
-		bool canMove = target == nullptr ? isPawn ? false : true : (target->getColor() != currentColor && canCapture);
+		int letter = static_cast<int>(moveCoord.first);
+		int number = static_cast<int>(moveCoord.second);
+
+		std::shared_ptr<CPiece> target =  m_Board[letter][number].getPiece();
+
+		bool movingPieceIsPawn = (piece->getSymbol() == "p" || piece->getSymbol() == "P");
+
+		bool canMove = target == nullptr ? movingPieceIsPawn && canCapture ? false : true : (target->getColor() != piece->getColor() && canCapture);
 
 		if (canMove)
 		{
@@ -172,102 +179,102 @@ bool CBoard::isSpaceValid(CValidSquare ValidSquare,bool& isKingInCheck)
 				std::shared_ptr<CKing> king = std::static_pointer_cast<CKing>(target);
 				king->setInCheck(true);
 			}
-			
+
 			return true;
 		}
+		
 	}
-
 	return false;
 }
 
-void CBoard::getForwardOnceCoord(std::vector<Coord>& coordVec, Coord currentCoord, bool canCapture, eColor currentColor, bool& isKingInCheck)
+void CBoard::getForwardOnceCoord(std::vector<Coord>& coordVec, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	Coord moveCoord = currentCoord;
+	Coord moveCoord = piece->getCurrentCoord();
 	++moveCoord.second;
 
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture,isKingInCheck))
 		coordVec.push_back(moveCoord);
 }
 
-void CBoard::getForwardTwiceCoord(std::vector<Coord>& coordVec, Coord currentCoord, bool canCapture, eColor currentColor, bool& isKingInCheck)
+void CBoard::getForwardTwiceCoord(std::vector<Coord>& coordVec, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	Coord moveCoord = currentCoord;
+	Coord moveCoord = piece->getCurrentCoord();
 	++moveCoord.second+=2;
 
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 }
 
-void CBoard::getAdjacentOnceCoord(std::vector<Coord>& coordVec, Coord currentCoord, bool canCapture, eColor currentColor, bool& isKingInCheck)
+void CBoard::getAdjacentOnceCoord(std::vector<Coord>& coordVec, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	Coord moveCoord = currentCoord;
+	Coord moveCoord =  piece->getCurrentCoord();
 
 	//Check forward
 	++moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
 	//Check backward
-	moveCoord = currentCoord;
+	moveCoord =  piece->getCurrentCoord();
 	--moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
 	//Check left
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 	--moveCoord.first;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
 	//Check right
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 	++moveCoord.first;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 }
 
-void CBoard::getAjacentContinuousCoord(std::vector<Coord>& coordVec, Coord currentCoord, bool canCapture, eColor currentColor, bool& isKingInCheck)
+void CBoard::getAjacentContinuousCoord(std::vector<Coord>& coordVec, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	Coord moveCoord = currentCoord;
+	Coord moveCoord = piece->getCurrentCoord();
 
 	//check Forward
 	for (int i = static_cast<int>(eNumbers::One); i < static_cast<int>(eNumbers::Size); i++)
 	{
 		++moveCoord.second;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//check Backward
 	for (int i = static_cast<int>(eNumbers::Eight); i > static_cast<int>(eNumbers::OUT_OF_BOUNDS); i--)
 	{
 		--moveCoord.second;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//check left
 	for (int i = static_cast<int>(eLetters::H); i > static_cast<int>(eNumbers::OUT_OF_BOUNDS); i--)
 	{
 		++moveCoord.first;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//check right
 	for (int i = static_cast<int>(eLetters::A); i < static_cast<int>(eNumbers::Size); i++)
 	{
 		++moveCoord.first;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
@@ -344,157 +351,157 @@ void CBoard::canEnPassantKS(Coord currentCoord)
 	}
 }
 
-void CBoard::getDiagonalOnceCoord(std::vector<Coord>& coordVec, Coord currentCoord, bool canCapture, eColor currentColor, bool& isKingInCheck)
+void CBoard::getDiagonalOnceCoord(std::vector<Coord>& coordVec, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	Coord moveCoord = currentCoord;
+	Coord moveCoord = piece->getCurrentCoord();
 	
 	//Check left forward
 	--moveCoord.first;
 	++moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check left backward
 	--moveCoord.first;
 	--moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check right forward
 	++moveCoord.first;
 	++moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check right backward
 	++moveCoord.first;
 	--moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
 }
 
-void CBoard::getDiagonalContinuousCoord(std::vector<Coord>& coordVec, Coord currentCoord, bool canCapture, eColor currentColor, bool& isKingInCheck)
+void CBoard::getDiagonalContinuousCoord(std::vector<Coord>& coordVec, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	Coord moveCoord = currentCoord;
+	Coord moveCoord = piece->getCurrentCoord();
 
 	//check left Forward
 	for (int i = static_cast<int>(eNumbers::One); i < static_cast<int>(eNumbers::Size); i++)
 	{
 		--moveCoord.first;
 		++moveCoord.second;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//check left Backward
 	for (int i = static_cast<int>(eNumbers::Eight); i > static_cast<int>(eNumbers::OUT_OF_BOUNDS); i--)
 	{
 		--moveCoord.first;
 		--moveCoord.second;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//check right forward
 	for (int i = static_cast<int>(eNumbers::One); i < static_cast<int>(eNumbers::Size); i++)
 	{
 		++moveCoord.first;
 		++moveCoord.second;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//check right backward
 	for (int i = static_cast<int>(eNumbers::Eight); i > static_cast<int>(eNumbers::OUT_OF_BOUNDS); i--)
 	{
 		++moveCoord.first;
 		--moveCoord.second;
-		if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+		if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 			coordVec.push_back(moveCoord);
 		else break;
 	}
 }
 
-void CBoard::getLShapeCoord(std::vector<Coord>& coordVec, Coord currentCoord, bool canCapture, eColor currentColor, bool& isKingInCheck)
+void CBoard::getLShapeCoord(std::vector<Coord>& coordVec, std::shared_ptr<CPiece> piece, bool canCapture, bool& isKingInCheck)
 {
-	Coord moveCoord = currentCoord;
+	Coord moveCoord = piece->getCurrentCoord();
 
 	//Check forward left
 	--moveCoord.first;
 	moveCoord.second += 2;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check left forward
 	moveCoord.first -= 2;
 	++moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check left backward
 	moveCoord.first -= 2;
 	--moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check backward left
 	--moveCoord.first;
 	moveCoord.second -= 2;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check backward right
 	++moveCoord.first;
 	moveCoord.second -= 2;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check right backward
 	moveCoord.first += 2;
 	--moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check right forward
 	moveCoord.first += 2;
 	++moveCoord.second;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
-	moveCoord = currentCoord;
+	moveCoord = piece->getCurrentCoord();
 
 	//Check right forward
 	++moveCoord.first;
 	moveCoord.second+=2;
-	if (isSpaceValid(moveCoord, canCapture, currentColor, isKingInCheck))
+	if (isSpaceValid(moveCoord, piece, canCapture, isKingInCheck))
 		coordVec.push_back(moveCoord);
 
 }
@@ -633,30 +640,3 @@ eNumbers& operator--(eNumbers& number)
 	}
 }
 
-CValidSquare::CValidSquare(BoardVec boardvec) :
-	boardVec{ boardVec }
-{
-}
-
-bool CValidSquare::isSquareInBounds()
-{
-	if (moveCoord.first >= eLetters::A && moveCoord.first <= eLetters::H &&
-		moveCoord.second >= eNumbers::One && moveCoord.second <= eNumbers::Eight)
-		return true;
-	else
-		return false;
-}
-
-std::shared_ptr<CPiece> CValidSquare::getTarget()
-{
-	int letter = static_cast<int>(moveCoord.first);
-	int number = static_cast<int>(moveCoord.second);
-
-	return boardVec[letter][number].getPiece();
-}
-
-bool CValidSquare::isKing()
-{	
-	if (getTarget()->getSymbol() == "p" || getTarget()->getSymbol() == "P") return true;
-	else return false;
-}
